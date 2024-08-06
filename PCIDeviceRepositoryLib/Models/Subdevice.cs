@@ -6,10 +6,7 @@ public class Subdevice()
 	public static Range IdRange => new(new(7), new(11));
 	public static Range NameRange => new(new(13), new(0, true));
 
-	public Guid Id { get; set; }
-	public Guid DeviceId { get; set; }
-	public Device Device { get; set; } = default!;
-	public int SubdeviceId { get; set; }
-	public int SubvendorId { get; set; }
+	public string Id { get; set; } = string.Empty;
+	public string SubvendorId { get; set; } = string.Empty;
 	public string Name { get; set; } = string.Empty;
 }
