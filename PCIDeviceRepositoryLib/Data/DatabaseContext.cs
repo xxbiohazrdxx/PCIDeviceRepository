@@ -1,5 +1,4 @@
-﻿using Microsoft.Azure.Cosmos.Linq;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using RepositoryLib.Models;
 
 namespace RepositoryLib.Data;

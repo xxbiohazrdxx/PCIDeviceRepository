@@ -6,6 +6,8 @@ using RepositoryLib.Data;
 using RepositoryLib.Models;
 using RepositoryProcessor.Configuration;
 using System.Globalization;
+using System.Text.RegularExpressions;
+using static Grpc.Core.Metadata;
 
 namespace RepositoryProcessor;
 
@@ -34,12 +36,8 @@ public partial class ProcessorFunction(ILoggerFactory loggerFactory, IDbContextF
 		var repositoryContent = (await client.GetStringAsync(_configuration.RepositoryUrl, token))
 			.Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
-		var versionString = repositoryContent
-			.Skip(3)
-			.Take(1)
-			.Single();
-
-		#region Version
+		// Get the version from the repository file
+		var versionString = repositoryContent[3];
 		if (versionString.StartsWith("#\tVersion: ") && DateTime.TryParse(versionString[Repository.VersionRange], out var version))
 		{
 			_logger.LogInformation("Detected repository version {version}", version.ToString("yyyy.MM.dd"));
@@ -55,215 +53,140 @@ public partial class ProcessorFunction(ILoggerFactory loggerFactory, IDbContextF
 		}
 		else
 		{
-			_logger.LogCritical("Unable to detect file version.");
+			_logger.LogCritical("Verion string was not found or not in the correct format.");
 			throw new InvalidDataException("Verion string was not found or not in the correct format.");
 		}
-		#endregion
 
-		var repositoryDevices = repositoryContent
-			.Where(x => !x.StartsWith('#'))
-			.TakeWhile(x => !x.StartsWith('C'));
-		var repositoryClasses = repositoryContent
-			.Where(x => !x.StartsWith('#'))
-			.SkipWhile(x => !x.StartsWith('C'));
+		// Remove comments
+		var repositoryData = repositoryContent.Where(x => !x.StartsWith('#'));
+
+		// Validate the lines
+#pragma warning disable SYSLIB1045 // Convert to 'GeneratedRegexAttribute'.
+		if (!repositoryData.All(x => (
+			Regex.IsMatch(x, @"^C [0-9a-f]{2}  .+$")   ||			// Class
+			Regex.IsMatch(x, @"^\t[0-9a-f]{2}  .+$")   ||			// Subclass
+			Regex.IsMatch(x, @"^\t\t[0-9a-f]{2}  .+$") ||			// Programming interface
+			Regex.IsMatch(x, @"^[0-9a-f]{4}  .+$")     ||			// Vendor
+			Regex.IsMatch(x, @"^\t[0-9a-f]{4}  .+$")   ||			// Device
+			Regex.IsMatch(x, @"^\t\t[0-9a-f]{4} [0-9a-f]{4}  .+$")	// Subdevice
+		)))
+		{
+			_logger.LogCritical("One or more lines in the repository definition file did not pass validation.");
+			throw new InvalidDataException("One or more lines in the repository definition file did not pass validation.");
+		}
+#pragma warning restore SYSLIB1045 // Convert to 'GeneratedRegexAttribute'.
+
+		var repositoryDevices = repositoryData.TakeWhile(x => !x.StartsWith('C'));
+		var repositoryClasses = repositoryData.SkipWhile(x => !x.StartsWith('C'));
 
 		_logger.LogInformation("Retrieved {device} lines of devices and {class} lines of classes",
 			repositoryDevices.Count(),
 			repositoryClasses.Count());
 
-		await ParseClasses(repositoryClasses, token);
-		await ParseDevices(repositoryDevices, token);
+		await Parse<DeviceClass, DeviceSubclass, ProgrammingInterface>(repositoryClasses, token);
+		await Parse<Vendor, Device, Subdevice>(repositoryDevices, token);
 
 		using (var context = await dbContextFactory.CreateDbContextAsync(token))
 		{
 			var repository = await context.Repository.SingleAsync(token);
 			repository.Version = version;
 			repository.LastUpdate = DateTime.UtcNow;
-			repository.Refreshing = false;
 			await context.SaveChangesAsync(token);
 
 			_logger.LogInformation("Processing complete, updated version to {version}", version);
 		}
 	}
 
-	private async Task ParseClasses(IEnumerable<string> repositoryClasses, CancellationToken token)
+	private async Task Parse<T1, T2, T3>(IEnumerable<string> vendorLines, CancellationToken token) where T1 : RootModelBase, IParsable, new() where T2 : ChildModelBase, IParsable, new() where T3 : DescendantModelBase, IParsable, new()
 	{
-		DeviceClass devClass = null!;
-		foreach (var currentClass in repositoryClasses)
+		foreach (var rootChunk in Chunk(vendorLines, T1.ChunkRegex))
 		{
-			// Class
-			if (currentClass.StartsWith('C'))
+			var root = new T1()
 			{
-				if (devClass is not null)
+				Id = rootChunk.First()[T1.IdRange],
+				Name = rootChunk.First()[T1.NameRange]
+			};
+
+			foreach (var children in Chunk(rootChunk.Skip(1), T2.ChunkRegex))
+			{
+				var child = new T2()
 				{
-					devClass.Hash = await devClass.GetHashAsync(token);
-
-					using var context = await dbContextFactory.CreateDbContextAsync(token);
-
-					if (await context.Classes.AnyAsync(x => (x.Id == devClass.Id) && (x.Hash == devClass.Hash), token))
-					{
-						_logger.LogInformation("Finished parsing class {class}, identitcal class already exists in database.", devClass.Id);
-					}
-					else
-					{
-						context.Classes.Add(devClass);
-						await context.SaveChangesAsync(token);
-					}
-				}
-
-				var id = currentClass[DeviceClass.IdRange];
-				var name = currentClass[DeviceClass.NameRange];
-
-				if (!int.TryParse(id, NumberStyles.HexNumber, null, out _))
-				{
-					_logger.LogWarning("Detected device class but id could not be parsed: {line}", currentClass);
-					continue;
-				}
-
-				devClass = new()
-				{
-					Id = id,
-					Name = name
+					Id = children.First()[T2.IdRange],
+					Name = children.First()[T2.NameRange]
 				};
-			}
-			// Programming interface
-			else if (currentClass.StartsWith("\t\t"))
-			{
-				var id = currentClass[ProgrammingInterface.IdRange];
-				var name = currentClass[ProgrammingInterface.NameRange];
 
-				if (!int.TryParse(id, NumberStyles.HexNumber, null, out _))
+				foreach (var descendant in children.Skip(1))
 				{
-					_logger.LogWarning("Detected programming interface but id could not be parsed: {line}", currentClass);
-					continue;
+					var newDescendant = new T3()
+					{
+						Id = descendant[T3.IdRange],
+						Name = descendant[T3.NameRange]
+					};
+
+					if (newDescendant is Subdevice subdevice)
+					{
+						subdevice.SubvendorId = descendant[Subdevice.SubvendorIdRange];
+					}
+
+					child.Descendants.Add(newDescendant);
 				}
 
-				devClass.Subclasses[^1].ProgrammingInterfaces.Add(new()
-				{
-					Id = id,
-					Name = name
-				});
+				root.Children.Add(child);
 			}
-			// Subclass
-			else if (currentClass.StartsWith('\t'))
-			{
-				var id = currentClass[DeviceSubclass.IdRange];
-				var name = currentClass[DeviceSubclass.NameRange];
 
-				if (!int.TryParse(id, NumberStyles.HexNumber, null, out _))
-				{
-					_logger.LogWarning("Detected device subclass but id could not be parsed: {line}", currentClass);
-					continue;
-				}
+			await root.CalculateHashAsync(token);
 
-				devClass.Subclasses.Add(new()
-				{
-					Id = id,
-					Name = name
-				});
-			}
-			else
+			_logger.LogInformation("Parsed {baseType} {id} - {name}. Contains {children} children.", 
+				typeof(T1).Name,
+				root.Id,
+				root.Name,
+				root.Children.Count);
+
+			using var context = await dbContextFactory.CreateDbContextAsync(token);
+
+			var existing = await context.Set<T1>().FindAsync([root.Id], token);
+			if (existing is not null && existing.Hash == root.Hash)
 			{
-				_logger.LogError("Unexpected format when parsing classes: {line}", currentClass);
+				_logger.LogInformation("Skipping {entity} with id {id} as it already exists and matches database.",
+					typeof(T1).Name,
+					root.Id);
+				return;
 			}
+			else if (existing is null)
+			{
+				_logger.LogInformation("Adding {entity} to database as it does not already exist.", typeof(T1).Name);
+				context.Set<T1>().Add(root);
+			}
+			else if (existing.Hash != root.Hash)
+			{
+				_logger.LogInformation("Updating {entity} in database as the hash has changed.", typeof(T1).Name);
+				context.Entry(existing).State = EntityState.Detached;
+				context.Set<T1>().Add(root);
+			}
+
+			await context.SaveChangesAsync(token);
 		}
 
-		_logger.LogInformation("Completed parsing of classes.");
+		_logger.LogInformation("Completed parsing of {basteType}.", typeof(T1).Name);
 	}
 
-	private async IAsyncEnumerable<IEnumerable<string>> ChunkClasses(List<string> rawClasses, CancellationToken token)
+	private static IEnumerable<IEnumerable<string>> Chunk(IEnumerable<string> lines, string regex)
 	{
-		List<string> classChunks = [];
-		foreach (var currentLine in rawClasses)
+		List<string> chunks = [];
+		foreach (var currentLine in lines)
 		{
-			if (currentLine.StartsWith('C') && classChunks.Count > 0)
+			if (Regex.IsMatch(currentLine, regex) && chunks.Count > 0)
 			{
-				yield return classChunks;
-				classChunks = [];
+				yield return chunks;
+				chunks = [];
 			}
 
-			classChunks.Add(currentLine);
-		}
-	}
-
-	private async Task ParseDevices(IEnumerable<string> repositoryDevices, CancellationToken token)
-	{
-		Vendor vendor = null!;
-		foreach (var currentLine in repositoryDevices)
-		{
-			// Subdevice
-			if (currentLine.StartsWith("\t\t"))
-			{
-				var id = currentLine[Subdevice.IdRange];
-				var name = currentLine[Subdevice.NameRange];
-
-				if (!int.TryParse(id, NumberStyles.HexNumber, null, out _))
-				{
-					_logger.LogWarning("Detected subdevice but subdevice id could not be parsed: {line}", currentLine);
-					continue;
-				}
-
-				var subvendorId = currentLine[Subdevice.SubvendorIdRange];
-				if (!int.TryParse(subvendorId, NumberStyles.HexNumber, null, out _))
-				{
-					_logger.LogWarning("Detected subdevice but subvendor id could not be parsed: {line}", currentLine);
-					continue;
-				}
-
-				vendor.Devices[^1].Subdevices.Add(new()
-				{
-					Id = id,
-					Name = name,
-					SubvendorId = subvendorId
-				});
-			}
-			// Device
-			else if (currentLine.StartsWith('\t'))
-			{
-				var id = currentLine[Device.IdRange];
-				var name = currentLine[Device.NameRange];
-
-				if (!int.TryParse(id, NumberStyles.HexNumber, null, out _))
-				{
-					_logger.LogWarning("Detected device but device id could not be parsed: {line}", currentLine);
-					continue;
-				}
-
-				vendor.Devices.Add(new()
-				{
-					Id = id,
-					Name = name
-				});
-			}
-			// Vendor
-			else
-			{
-				if (vendor is not null)
-				{
-					vendor.Hash = await vendor.GetHashAsync(token);
-
-					using var context = await dbContextFactory.CreateDbContextAsync(token);
-					context.Vendors.Add(vendor);
-					await context.SaveChangesAsync(token);
-				}
-
-				var id = currentLine[Vendor.IdRange];
-				var name = currentLine[Vendor.NameRange];
-
-				if (!int.TryParse(id, NumberStyles.HexNumber, null, out _))
-				{
-					_logger.LogWarning("Detected vendor but vendor id could not be parsed: {line}", currentLine);
-					continue;
-				}
-
-				vendor = new()
-				{
-					Id = id,
-					Name = name
-				};
-			}
+			chunks.Add(currentLine);
 		}
 
-		_logger.LogInformation("Completed parsing of devices.");
+		if (chunks.Count > 0)
+		{
+			yield return chunks;
+		}
 	}
 }

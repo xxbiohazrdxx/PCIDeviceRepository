@@ -7,5 +7,4 @@ public class Repository
 	public string Id { get; private set; } = ".";
 	public DateTime Version { get; set; } = DateTime.MinValue;
 	public DateTime LastUpdate { get; set; } = DateTime.MinValue;
-	public bool Refreshing { get; set; } = true;
 }
