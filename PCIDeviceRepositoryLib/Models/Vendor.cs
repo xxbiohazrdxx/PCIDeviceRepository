@@ -1,6 +1,6 @@
 ﻿namespace RepositoryLib.Models;
 
-public class Vendor : RootModelBase, IParsable
+public class Vendor : RootModelBase<Device, Subdevice>, IParsable
 {
 	public static string ChunkRegex => "^[a-f0-9]{4}";
 	public static Range IdRange => new(new(0), new(4));

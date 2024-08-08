@@ -1,9 +1,6 @@
-﻿using System.Security.Cryptography;
-using System.Text;
+﻿namespace RepositoryLib.Models;
 
-namespace RepositoryLib.Models;
-
-public class DeviceClass : RootModelBase, IParsable
+public class DeviceClass : RootModelBase<DeviceSubclass, ProgrammingInterface>, IParsable
 {
 	public static string ChunkRegex => "^C";
 	public static Range IdRange => new(new(2), new(4));

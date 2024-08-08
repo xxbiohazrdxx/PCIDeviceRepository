@@ -27,6 +27,19 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbCont
 			entity.ToContainer("Classes")
 				.HasNoDiscriminator()
 				.HasKey(x => x.Id);
+
+			entity.OwnsMany(
+				w => w.Children,
+				x =>
+				{
+					x.ToJsonProperty("Subclasses");
+					x.OwnsMany(
+						y => y.Descendants,
+						z =>
+						{
+							z.ToJsonProperty("ProgrammingInterfaces");
+						});
+				});
 		});
 
 		builder.Entity<Vendor>(entity =>
@@ -34,6 +47,19 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbCont
 			entity.ToContainer("Vendors")
 				.HasNoDiscriminator()
 				.HasKey(x => x.Id);
+
+			entity.OwnsMany(
+				w => w.Children,
+				x =>
+				{
+					x.ToJsonProperty("Devices");
+					x.OwnsMany(
+						y => y.Descendants,
+						z =>
+						{
+							z.ToJsonProperty("Subdevices");
+						});
+				});
 		});
 
 		base.OnModelCreating(builder);

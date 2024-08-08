@@ -97,7 +97,10 @@ public partial class ProcessorFunction(ILoggerFactory loggerFactory, IDbContextF
 		}
 	}
 
-	private async Task Parse<T1, T2, T3>(IEnumerable<string> vendorLines, CancellationToken token) where T1 : RootModelBase, IParsable, new() where T2 : ChildModelBase, IParsable, new() where T3 : DescendantModelBase, IParsable, new()
+	private async Task Parse<T1, T2, T3>(IEnumerable<string> vendorLines, CancellationToken token) 
+		where T1 : RootModelBase<T2, T3>, IParsable, new() 
+		where T2 : ChildBase<T3>, IParsable, new() 
+		where T3 : DescendantBase, IParsable, new()
 	{
 		foreach (var rootChunk in Chunk(vendorLines, T1.ChunkRegex))
 		{
@@ -123,10 +126,10 @@ public partial class ProcessorFunction(ILoggerFactory loggerFactory, IDbContextF
 						Name = descendant[T3.NameRange]
 					};
 
-					if (newDescendant is Subdevice subdevice)
-					{
-						subdevice.SubvendorId = descendant[Subdevice.SubvendorIdRange];
-					}
+					//if (newDescendant is Subdevice subdevice)
+					//{
+					//	subdevice.SubvendorId = descendant[Subdevice.SubvendorIdRange];
+					//}
 
 					child.Descendants.Add(newDescendant);
 				}
@@ -134,7 +137,7 @@ public partial class ProcessorFunction(ILoggerFactory loggerFactory, IDbContextF
 				root.Children.Add(child);
 			}
 
-			await root.CalculateHashAsync(token);
+			root.CalculateHash();
 
 			_logger.LogInformation("Parsed {baseType} {id} - {name}. Contains {children} children.", 
 				typeof(T1).Name,

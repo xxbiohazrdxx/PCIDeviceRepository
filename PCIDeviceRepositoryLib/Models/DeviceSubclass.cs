@@ -1,6 +1,7 @@
-﻿namespace RepositoryLib.Models;
+﻿
+namespace RepositoryLib.Models;
 
-public class DeviceSubclass : ChildModelBase, IParsable
+public class DeviceSubclass : ChildBase<ProgrammingInterface>, IParsable
 {
 	public static string ChunkRegex => "^\t[^\t]";
 	public static Range IdRange => new(new(1), new(3));
