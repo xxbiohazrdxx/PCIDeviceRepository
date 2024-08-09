@@ -26,11 +26,11 @@ public partial class ProcessorFunction(ILoggerFactory loggerFactory, IDbContextF
             _logger.LogInformation("Next timer schedule at: {next}", timer.ScheduleStatus.Next);
         }
 
-		using (var context = await dbContextFactory.CreateDbContextAsync(token))
-		{
-			await context.Database.EnsureDeletedAsync(token);
-			await context.Database.EnsureCreatedAsync(token);
-		}
+		//using (var context = await dbContextFactory.CreateDbContextAsync(token))
+		//{
+		//	await context.Database.EnsureDeletedAsync(token);
+		//	await context.Database.EnsureCreatedAsync(token);
+		//}
 
 		using var client = new HttpClient();
 		var repositoryContent = (await client.GetStringAsync(_configuration.RepositoryUrl, token))
@@ -126,10 +126,10 @@ public partial class ProcessorFunction(ILoggerFactory loggerFactory, IDbContextF
 						Name = descendant[T3.NameRange]
 					};
 
-					//if (newDescendant is Subdevice subdevice)
-					//{
-					//	subdevice.SubvendorId = descendant[Subdevice.SubvendorIdRange];
-					//}
+					if (newDescendant is Subdevice subdevice)
+					{
+						subdevice.SubvendorId = descendant[Subdevice.SubvendorIdRange];
+					}
 
 					child.Descendants.Add(newDescendant);
 				}
@@ -153,7 +153,7 @@ public partial class ProcessorFunction(ILoggerFactory loggerFactory, IDbContextF
 				_logger.LogInformation("Skipping {entity} with id {id} as it already exists and matches database.",
 					typeof(T1).Name,
 					root.Id);
-				return;
+				continue;
 			}
 			else if (existing is null)
 			{

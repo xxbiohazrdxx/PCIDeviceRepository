@@ -1,4 +1,6 @@
-﻿namespace RepositoryLib.Models;
+﻿using System.Text.Json.Serialization;
+
+namespace RepositoryLib.Models;
 
 public interface IParsable
 {

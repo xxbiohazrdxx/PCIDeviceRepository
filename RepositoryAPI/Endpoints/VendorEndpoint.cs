@@ -10,7 +10,7 @@ public static class VendorEndpoint
 {
 	public static void MapVendorEndpoints (this IEndpointRouteBuilder routes)
     {
-        var group = routes.MapGroup("/api/vendor").WithTags(nameof(Vendor));
+        var group = routes.MapGroup("/api/vendors").WithTags(nameof(Vendor));
 
         group.MapGet("/", async (DatabaseContext db) =>
         {

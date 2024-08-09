@@ -10,7 +10,7 @@ public static class ClassEndpoint
 {
 	public static void MapClassEndpoints(this IEndpointRouteBuilder routes)
 	{
-		var group = routes.MapGroup("/api/class").WithTags(nameof(DeviceClass));
+		var group = routes.MapGroup("/api/classes").WithTags(nameof(DeviceClass));
 
 		group.MapGet("/", async (DatabaseContext db) =>
 		{

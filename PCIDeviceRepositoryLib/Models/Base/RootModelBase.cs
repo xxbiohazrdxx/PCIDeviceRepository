@@ -1,13 +1,15 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json.Serialization;
 
 namespace RepositoryLib.Models;
 
 public abstract class RootModelBase<T1, T2> : ModelBase where T1 : ChildBase<T2>, new() where T2 : DescendantBase, new()
 {
-	public List<T1> Children { get; set; } = [];
 	public string Hash { get; private set; } = string.Empty;
-
+	[JsonIgnore]
+	public abstract List<T1> Children { get; set; }
+	
 	public void CalculateHash()
 	{
 		var stringBuilder = new StringBuilder();
@@ -24,11 +26,6 @@ public abstract class RootModelBase<T1, T2> : ModelBase where T1 : ChildBase<T2>
 			{
 				stringBuilder.Append(descendant.Id);
 				stringBuilder.Append(descendant.Name);
-
-				//if (descendant is Subdevice subdevice)
-				//{
-				//	stringBuilder.Append(subdevice.SubvendorId);
-				//}
 			}
 		}
 
