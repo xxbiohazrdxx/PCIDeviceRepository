@@ -5,9 +5,7 @@ using Microsoft.Extensions.Options;
 using RepositoryLib.Data;
 using RepositoryLib.Models;
 using RepositoryProcessor.Configuration;
-using System.Globalization;
 using System.Text.RegularExpressions;
-using static Grpc.Core.Metadata;
 
 namespace RepositoryProcessor;
 

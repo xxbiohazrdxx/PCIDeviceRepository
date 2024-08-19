@@ -6,6 +6,7 @@ namespace RepositoryLib.Models;
 
 public abstract class RootModelBase<T1, T2> : ModelBase where T1 : ChildBase<T2>, new() where T2 : DescendantBase, new()
 {
+	[JsonIgnore]
 	public string Hash { get; private set; } = string.Empty;
 	[JsonIgnore]
 	public abstract List<T1> Children { get; set; }

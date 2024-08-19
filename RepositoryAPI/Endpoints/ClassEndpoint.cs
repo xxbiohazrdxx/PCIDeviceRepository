@@ -14,9 +14,7 @@ public static class ClassEndpoint
 
 		group.MapGet("/", async (DatabaseContext db) =>
 		{
-			return await db.Classes
-				.Include(x => x.Children)
-				.ToListAsync();
+			return await db.Classes.ToListAsync();
 		})
 		.WithName("GetAllClasses")
 		.WithOpenApi();
@@ -24,7 +22,6 @@ public static class ClassEndpoint
 		group.MapGet("/{id}", async Task<Results<Ok<DeviceClass>, NotFound>> (string id, DatabaseContext db) =>
 		{
 			return await db.Classes.AsNoTracking()
-				.Include(x => x.Children)
 				.FirstOrDefaultAsync(model => model.Id == id)
 				is DeviceClass model
 					? TypedResults.Ok(model)
@@ -34,4 +31,3 @@ public static class ClassEndpoint
 		.WithOpenApi();
 	}
 }
-

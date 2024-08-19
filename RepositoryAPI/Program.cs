@@ -42,6 +42,7 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapVendorEndpoints();
+app.MapDeviceEndpoints();
 app.MapClassEndpoints();
 app.MapRepositoryEndpoints();
 
