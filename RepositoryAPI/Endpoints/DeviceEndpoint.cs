@@ -13,24 +13,27 @@ public static class DeviceEndpoint
 	{
 		var group = routes.MapGroup("/api/devices").WithTags(nameof(Device));
 
-		group.MapGet("/", async (DatabaseContext db, string? vendorId) =>
+		group.MapGet("/", async (DatabaseContext db, string? vendorId, string? deviceId) =>
 		{
 			return (await db.Vendors
 				.Where(x => (vendorId == null) || x.Id == vendorId)
 				.ToListAsync())
-				.SelectMany(x => x.Children.Select(y => new DeviceDto()
-				{
-					VendorId = x.Id,
-					VendorName = x.Name,
-					DeviceId = y.Id,
-					DeviceName = y.Name,
-					Subdevices = y.Descendants.Select(z => new SubdeviceDto()
+				.SelectMany(x => x.Children
+					.Where(y => (deviceId == null) || y.Id == deviceId)
+					.Select(y => new DeviceDto()
 					{
-						SubvendorId = z.SubvendorId,
-						SubdeviceId = z.Id,
-						SubdeviceName = z.Name
-					})
-				}));
+						VendorId = x.Id,
+						VendorName = x.Name,
+						DeviceId = y.Id,
+						DeviceName = y.Name,
+						Subdevices = y.Descendants.Select(z => new SubdeviceDto()
+						{
+							SubvendorId = z.SubvendorId,
+							SubdeviceId = z.Id,
+							SubdeviceName = z.Name
+						})
+					}
+				));
 		})
 		.WithName("GetAllDevices")
 		.WithOpenApi();
