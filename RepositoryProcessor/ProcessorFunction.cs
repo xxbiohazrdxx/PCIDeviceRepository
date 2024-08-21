@@ -46,7 +46,7 @@ public partial class ProcessorFunction(ILoggerFactory loggerFactory, IDbContextF
 			if (repository.Version == version)
 			{
 				_logger.LogInformation("Repository version matches existing database version. No processing is required.");
-				return;
+				//return;
 			}
 		}
 		else
@@ -160,9 +160,10 @@ public partial class ProcessorFunction(ILoggerFactory loggerFactory, IDbContextF
 			}
 			else if (existing.Hash != root.Hash)
 			{
+				
 				_logger.LogInformation("Updating {entity} in database as the hash has changed.", typeof(T1).Name);
 				context.Entry(existing).State = EntityState.Detached;
-				context.Set<T1>().Add(root);
+				context.Set<T1>().Update(root);
 			}
 
 			await context.SaveChangesAsync(token);
