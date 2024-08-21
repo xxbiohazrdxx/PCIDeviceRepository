@@ -22,6 +22,14 @@ DatabaseConfiguration__DatabaseName = <the name of the database to be used in Co
 
 Note that the API component only requires read access to the database, so a read only key should be used. Additionally, the processor function will automatically create the database with a manual throughput limit of 1000RU/s at the database level. As such you should not attempt to create the database yourself inside of Cosmos DB.
 
+### PCI ID Repository
+
+The processor function also requires the URL for the PCI device repository database file that will be parsed. This can be taken from the above link, or from any other source that supplies the `pci.ids` file.
+
+```
+Configuration__RepositoryUrl = <the location of the pci.ids file>
+```
+
 ## Usage
 
 ### Repository version
@@ -52,11 +60,11 @@ Lists all known vendors
 
 ```json
 [
-	{
+    {
         "id": "8086",
         "name": "Intel Corporation"
-	},
-	...
+    },
+    ...
 ]
 ```
 
@@ -85,7 +93,7 @@ Lists the known devices
 
 ```json
 [
-	{
+    {
         "vendorId": "8086",
         "vendorName": "Intel Corporation",
         "deviceId": "0007",
@@ -106,7 +114,7 @@ Lists the known devices
         "deviceName": "21145 Fast Ethernet",
         "subdevices": []
     },
-	...
+    ...
 ]
 ```
 
