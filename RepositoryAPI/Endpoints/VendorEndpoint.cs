@@ -15,7 +15,8 @@ public static class VendorEndpoint
 
         group.MapGet("/", async (DatabaseContext db) =>
         {
-            return await db.Vendors.ToListAsync();
+            return (await db.Vendors.ToListAsync())
+                .Select(x => new VendorDto() { Id = x.Id, Name = x.Name });
         })
         .WithName("GetAllVendors")
         .WithOpenApi();
