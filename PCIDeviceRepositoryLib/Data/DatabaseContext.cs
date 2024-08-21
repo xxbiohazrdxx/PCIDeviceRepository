@@ -11,7 +11,7 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbCont
 
 	protected override void OnModelCreating(ModelBuilder builder)
 	{
-		builder.HasManualThroughput(4000);
+		builder.HasManualThroughput(1000);
 
 		builder.Entity<Repository>(entity =>
 		{
