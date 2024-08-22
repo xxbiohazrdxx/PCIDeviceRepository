@@ -24,11 +24,10 @@ public partial class ProcessorFunction(ILoggerFactory loggerFactory, IDbContextF
             _logger.LogInformation("Next timer schedule at: {next}", timer.ScheduleStatus.Next);
         }
 
-		//using (var context = await dbContextFactory.CreateDbContextAsync(token))
-		//{
-		//	await context.Database.EnsureDeletedAsync(token);
-		//	await context.Database.EnsureCreatedAsync(token);
-		//}
+		using (var context = await dbContextFactory.CreateDbContextAsync(token))
+		{
+			await context.Database.EnsureCreatedAsync(token);
+		}
 
 		using var client = new HttpClient();
 		var repositoryContent = (await client.GetStringAsync(_configuration.RepositoryUrl, token))
@@ -46,7 +45,7 @@ public partial class ProcessorFunction(ILoggerFactory loggerFactory, IDbContextF
 			if (repository.Version == version)
 			{
 				_logger.LogInformation("Repository version matches existing database version. No processing is required.");
-				//return;
+				return;
 			}
 		}
 		else

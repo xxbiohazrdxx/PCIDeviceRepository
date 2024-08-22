@@ -38,6 +38,7 @@ var host = new HostBuilder()
 	})
 	.ConfigureLogging(logging =>
 	{
+		logging.AddApplicationInsights();
 		logging.AddConsole();
 
 		logging.AddFilter("Microsoft.EntityFrameworkCore", LogLevel.Warning);
