@@ -30,6 +30,7 @@ public partial class ProcessorFunction(ILoggerFactory loggerFactory, IDbContextF
 		}
 
 		using var client = new HttpClient();
+		client.DefaultRequestHeaders.Add("User-Agent", @"GitHub.com/xxbiohazrdxx/PCIDeviceRepository");
 		var repositoryContent = (await client.GetStringAsync(_configuration.RepositoryUrl, token))
 			.Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
