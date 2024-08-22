@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using RepositoryLib.Data;
 using RepositoryLib.Models;
 using RepositoryProcessor.Configuration;
+using System.IO.Compression;
 using System.Text.RegularExpressions;
 
 namespace RepositoryProcessor;
@@ -29,10 +30,28 @@ public partial class ProcessorFunction(ILoggerFactory loggerFactory, IDbContextF
 			await context.Database.EnsureCreatedAsync(token);
 		}
 
-		using var client = new HttpClient();
-		client.DefaultRequestHeaders.Add("User-Agent", @"GitHub.com/xxbiohazrdxx/PCIDeviceRepository");
-		var repositoryContent = (await client.GetStringAsync(_configuration.RepositoryUrl, token))
-			.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+		string[] repositoryContent = [];
+		using (var client = new HttpClient())
+		{
+			client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "www.github.com/xxbiohazrzdxx/PCIRepositoryAPI");
+
+			using var stream = await client.GetStreamAsync(_configuration.RepositoryUrl, token);
+			using var decompression = new GZipStream(stream, CompressionMode.Decompress);
+			using var decompressedStream = new MemoryStream();
+
+			try
+			{
+				await decompression.CopyToAsync(decompressedStream, token);
+			}
+			catch (InvalidDataException)
+			{
+				_logger.LogCritical("Unable to decompress the PCI Device database. The Database URI environment variable must be set to the GZip compressed database.");
+				throw;
+			}
+
+			repositoryContent = System.Text.Encoding.ASCII.GetString(decompressedStream.ToArray())
+				.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+		}
 
 		// Get the version from the repository file
 		var versionString = repositoryContent[3];
