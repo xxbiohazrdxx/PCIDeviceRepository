@@ -24,10 +24,10 @@ Note that the API component only requires read access to the database, so a read
 
 ### PCI ID Repository
 
-The processor function also requires the URL for the PCI device repository database file that will be parsed. This can be taken from the above link, or from any other source that supplies the `pci.ids` file.
+The processor function also requires the URL for the GZip compressed PCI device repository database file. This can be taken from the above link, or from any other source that supplies the `pci.ids.gz` file.
 
 ```
-Configuration__RepositoryUrl = <the location of the pci.ids file>
+Configuration__RepositoryUrl = <the location of the pci.ids.gz file>
 ```
 
 ## Usage
@@ -164,7 +164,7 @@ Lists the known device classes
             }
         ]
     },
-	...
+    ...
 ]
 ```
 
